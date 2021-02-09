@@ -28,8 +28,7 @@ hello:
 build: 
 	go build -o ${OUTPUT} \
 		${PKG}/cmd/${BIN}
-	rm -f ${symbol_file}
-	ln -s ${OUTPUT} ${symbol_file} 
+	if [ "${GOOS}" = "linux" ]; then rm -f ${symbol_file} && ln -s ${OUTPUT} ${symbol_file}; fi
 
 clean:
 	rm -rf $(shell pwd)/bin
