@@ -14,6 +14,11 @@ type discoveryNotifee struct {
 	PeerChan chan peer.AddrInfo
 }
 
+// interface to be call when peer is found
+func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
+	n.PeerChan <- pi
+}
+
 // Initialize mdns discovery service
 func InitMDNS(ctx context.Context, host host.Host, rendezvous string) chan peer.AddrInfo {
 	srv, err := discovery.NewMdnsService(ctx, host, time.Hour, rendezvous)

@@ -22,17 +22,32 @@ endif
 
 symbol_file := $(shell pwd)/app
 
+
+.PHONY: hello build clean 
+
 hello:
 	echo ${GOOS}, ${GOARCH}, ${GOPROXY}, ${BIN}, ${OUTPUT}
 
-build: 
+build:
+	@$(MAKE) clean-all
+	@$(MAKE) test
 	go build -o ${OUTPUT} \
 		${PKG}/cmd/${BIN}
 	if [ "${GOOS}" = "linux" ]; then rm -f ${symbol_file} && ln -s ${OUTPUT} ${symbol_file}; fi
+
+test:
+	go test -v ./... -short
 
 clean:
 	rm -rf $(shell pwd)/bin
 	rm ${symbol_file}
 
+clean-all:
+	go clean -i ./...
+
+fmt:
+	go fmt ./...
+
 run:
 	@$(MAKE) build && ${OUTPUT}
+	
