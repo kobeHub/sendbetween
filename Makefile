@@ -20,7 +20,7 @@ ifeq ("${GOOS}", "windows")
 	OUTPUT := ${OUTPUT}.exe
 endif
 
-symbol_file := $(shell pwd)/app
+symbol_file := $(shell pwd)/${BIN}
 
 
 .PHONY: hello build clean 

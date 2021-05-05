@@ -16,11 +16,13 @@ import (
 	"github.com/kataras/golog"
 	"github.com/kobeHub/sendbetween/pkg/cfg"
 	sendio "github.com/kobeHub/sendbetween/pkg/io"
+	"github.com/kobeHub/sendbetween/pkg/mdns"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/network"
 	peerlib "github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -182,5 +184,59 @@ func StartPeer(cmd *cobra.Command, args []string) error {
 }
 
 func StartPeerWithMdns(cmd *cobra.Command, args []string) {
-	return
+	config := cfg.GetChatCfg()
+	golog.Info("Welcome to sendbetween!")
+
+	ctx := context.Background()
+	r := rand.Reader
+
+	// Create a new RSA key pair for this host
+	priKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, r)
+	if err != nil {
+		golog.Fatal("Generate RSA pair failed: ", err.Error())
+	}
+
+	host, err := libp2p.New(ctx,
+		libp2p.ListenAddrStrings(config.Address),
+		libp2p.Identity(priKey),
+	)
+	if err != nil {
+		golog.Fatal("Create host failed: ", err.Error())
+	}
+
+	host.SetStreamHandler(protocol.ID("/chat/1.0.1"), handleStream)
+	hostAddrInfo := peerlib.AddrInfo{
+		ID:    host.ID(),
+		Addrs: host.Addrs(),
+	}
+	hostMultiAddr, err := peerlib.AddrInfoToP2pAddrs(&hostAddrInfo)
+	if err != nil {
+		golog.Fatal("Get host multiaddr failed: ", err.Error())
+	}
+	golog.Info("Try to connent this host:")
+	golog.Infof("Run ./sendbetween -d %s\n", hostMultiAddr[0])
+
+	// Block untill found a peer
+	peerChan := mdns.InitMDNS(ctx, host, config.Rendezvous)
+	peer := <-peerChan
+
+	golog.Info("Found peer:", peer, " connecting...")
+	if err := host.Connect(ctx, peer); err != nil {
+		golog.Error("Connect to peer failed: ", err.Error())
+	}
+
+	// Open a stream, this stream will be handled by `handleStream` other end
+	stream, err := host.NewStream(ctx, peer.ID, protocol.ID("/chat/1.0.1"))
+	if err != nil {
+		golog.Error(err.Error())
+	} else {
+		rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
+
+		go writeData(rw)
+		go readData(rw)
+		golog.Info("Connected!!")
+		fmt.Printf(">> ")
+	}
+
+	select {}
 }

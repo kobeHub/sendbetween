@@ -17,7 +17,7 @@ func NewCommand() *cobra.Command {
 		Long:             `An easy cli tool to send text and files between different PCs across OS`,
 		TraverseChildren: true,
 		PreRun:           Init,
-		RunE:             peer.StartPeer,
+		Run:              peer.StartPeerWithMdns,
 	}
 	rootCmd.AddCommand(pingcli.NewCommand())
 	cfg.ParseBaseFlag(rootCmd)
